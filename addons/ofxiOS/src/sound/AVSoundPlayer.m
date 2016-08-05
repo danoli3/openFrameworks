@@ -38,11 +38,11 @@
     NSError * err = nil;
     // need to configure set the audio category, and override to it route the audio to the speaker
     if([audioSession respondsToSelector:@selector(setCategory:withOptions:error:)]) {
-        if(![audioSession setCategory:AVAudioSessionCategoryPlayAndRecord
+        if(![audioSession setCategory:AVAudioSessionCategoryPlayback
              						  withOptions:AVAudioSessionCategoryOptionMixWithOthers
                                         error:&err]) { err = nil; }
     }
-	[[AVAudioSession sharedInstance] setActive: YES error: nil];
+	[[AVAudioSession sharedInstance] setActive: YES error: nil];	
 	audioSessionSetup = YES;
 }
 

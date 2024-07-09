@@ -73,6 +73,9 @@ void ofApp::draw(){
 		ofDisableDepthTest();
 		material.end();
 	easyCam.end();
+
+	ofSaveScreen("floatingPointImageExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

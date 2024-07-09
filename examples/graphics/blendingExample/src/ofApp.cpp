@@ -45,6 +45,9 @@ void ofApp::draw(){
 	rainbow.draw(mouseX, mouseY);
 	
 	ofDisableBlendMode();
+	
+	ofSaveScreen("blendingExample.png");
+    ofExit();
 }
 
 

@@ -147,6 +147,9 @@ void ofApp::draw(){
 	ofSetColor(255);
 	ofDrawBitmapString(ss.str(), 10, 14);
 
+	ofSaveScreen("rectangleAlignmentAndScalingExample.png");
+    ofExit();
+
 }
 
 //--------------------------------------------------------------

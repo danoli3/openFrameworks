@@ -37,6 +37,9 @@ void ofApp::draw(){
 	//draw the image every frame, the changes you made in setup() will be there
 	original.draw(0,0);
 	keyed.draw(original.getWidth(),0);
+
+	ofSaveScreen("simpleColorKeyExample.png");
+    ofExit();
 	
 }
 

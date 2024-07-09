@@ -110,6 +110,9 @@ void ofApp::draw() {
 	ofDrawBitmapString(ofToString((int) ofGetFrameRate()) + " fps", 10, 20);
 	ofDrawBitmapString("Click and drag to set a new threshold.", 10, 40);
 	ofDrawBitmapString("Hold down any key to invert the thresholding.", 10, 60);
+
+	ofSaveScreen("polylineBlobsExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

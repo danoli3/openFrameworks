@@ -317,6 +317,8 @@ void ofApp::draw(){
 	ofSetHexColor(0xDDDDDD);
 	ofDrawBitmapString("spacebar to capture\n'f' key toggles fill\nmouse to doodle", 75, 650);
 
+	ofSaveScreen("vectorGraphicsExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

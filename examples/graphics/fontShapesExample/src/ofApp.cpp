@@ -79,7 +79,8 @@ void ofApp::draw(){
 		ofEndShape( true );
 	ofPopMatrix();
 
-
+	ofSaveScreen("fontShapesExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

@@ -55,6 +55,9 @@ void ofApp::draw(){
 	img.drawSubsection(0, 300, 100, 100, mouseX - 25, mouseY - 25, 50, 50);
 	ofSetColor(ofColor::magenta);
 	ofDrawRectangle(0, 300, 100, 100);
+
+	ofSaveScreen("imageSubsectionExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

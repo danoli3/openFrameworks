@@ -238,6 +238,8 @@ void ofApp::draw(){
 	ofDrawRectangle(0, ofGetHeight()-60, ofGetWidth(), 60);
 	ofDrawBitmapStringHighlight("press '1' to sort by name, '2' to sort by hue,\n'3' to sort by brightness, '4' to sort by saturation", 20, ofGetHeight()-60 + 30, ofColor::black, ofColor::white);
 
+	ofSaveScreen("colorExtendedExample.png");
+    ofExit();
 
 }
 

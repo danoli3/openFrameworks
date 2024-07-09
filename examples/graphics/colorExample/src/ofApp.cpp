@@ -15,6 +15,7 @@ void ofApp::setup(){
 	// initialise member variables to the centre of the screen
 	mouseXPercent = 0.5f;
 	mouseYPercent = 0.5f;
+
 }
 
 //--------------------------------------------------------------
@@ -108,6 +109,9 @@ void ofApp::draw(){
 					   " "+ofToString(int(color.g))+
 					   " "+ofToString(int(color.b)),
 					   200, ofGetHeight()-13 );
+
+	ofSaveScreen("colorExample.png");
+    ofExit();
 
 }
 

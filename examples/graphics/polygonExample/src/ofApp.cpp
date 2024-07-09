@@ -395,6 +395,8 @@ void ofApp::draw(){
 	ofSetHexColor(0x000000);
 	ofDrawBitmapString("(i) ofNextContour\ncan even be used for CSG operations\nsuch as union and intersection", 260,620);
 	
+	ofSaveScreen("polylineExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

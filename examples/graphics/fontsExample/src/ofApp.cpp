@@ -117,6 +117,9 @@ void ofApp::draw(){
 		verdana14A.drawString(scaleA, -bounds.width/2, bounds.height/2 );
 	ofPopMatrix();
 
+	ofSaveScreen("fontsExample.png");
+    ofExit();
+
 }
 
 

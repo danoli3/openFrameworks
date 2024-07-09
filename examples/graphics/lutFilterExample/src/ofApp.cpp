@@ -56,6 +56,9 @@ void ofApp::draw(){
 	}else {
 			vidGrabber.draw(0,0);
 	}
+
+	ofSaveScreen("lutFilterExample.png");
+    ofExit();
 }
 
 //--------------------------------------------------------------

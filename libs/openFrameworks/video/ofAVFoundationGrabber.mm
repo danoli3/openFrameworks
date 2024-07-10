@@ -249,10 +249,12 @@
 
 		// remove the input and outputs from session
 		for(AVCaptureInput *input1 in self.captureSession.inputs) {
-		    [self.captureSession removeInput:input1];
+            if(input1 != nullptr)
+                [self.captureSession removeInput:input1];
 		}
 		for(AVCaptureOutput *output1 in self.captureSession.outputs) {
-		    [self.captureSession removeOutput:output1];
+            if(output1 != nullptr)
+                [self.captureSession removeOutput:output1];
 		}
 
 		[self.captureSession stopRunning];

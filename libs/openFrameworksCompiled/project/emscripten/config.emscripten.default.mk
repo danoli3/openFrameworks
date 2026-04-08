@@ -84,6 +84,8 @@ ifdef EMSCRIPTEN_MEMORY64
 	PLATFORM_LDFLAGS += -s MEMORY64=1 -mwasm64
 endif
 
+PLATFORM_CXXFLAGS += --use-port=contrib.glfw3
+
 ################################################################################
 # PLATFORM LDFLAGS
 #   This is a list of fully qualified LDFLAGS required when linking for this
@@ -136,6 +138,7 @@ PLATFORM_LDFLAGS += -s ALLOW_MEMORY_GROWTH=1
 PLATFORM_LDFLAGS += -sABORT_ON_WASM_EXCEPTIONS=0
 PLATFORM_LDFLAGS += -s DYNAMIC_EXECUTION=0 -s EMBIND_AOT=1
 PLATFORM_LDFLAGS += -s FILESYSTEM=1
+PLATFORM_LDFLAGS += --use-port=contrib.glfw3
 # PLATFORM_LDFLAGS += -s SINGLE_FILE=1
 #PLATFORM_LDFLAGS += -s MODULARIZE=1
 #PLATFORM_LDFLAGS += -s EVAL_CTORS=1 -s ERROR_ON_UNDEFINED_SYMBOLS=1

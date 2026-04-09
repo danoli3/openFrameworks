@@ -16,6 +16,19 @@ using namespace std;
 
 ofxAppEmscriptenWindow * ofxAppEmscriptenWindow::instance = nullptr;
 
+void consoleErrorHandler(int iErrorCode, char const *iErrorMessage)
+{
+  printf("glfwError: %d | %s\n", iErrorCode, iErrorMessage);
+}
+
+EM_JS(void, forceDarkTheme, (), {
+    document.body.style.setProperty('background', 'rgb(20,20,20)', 'important');
+    document.getElementById('canvas-container').style.setProperty('background', '#111', 'important');
+    // you can also style #output, canvas, etc. here
+});
+
+
+
 //------------------------------------------------------------
 ofxAppEmscriptenWindow::ofxAppEmscriptenWindow() {
 	instance = this;
@@ -36,6 +49,8 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 		return;
 	}
 
+	glfwSetErrorCallback(consoleErrorHandler);
+
 	// which html canvas to use
 	emscripten::glfw3::SetNextWindowCanvasSelector("#canvas");
 
@@ -45,6 +60,8 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ES_API);
+
+	glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
 
 	glfwWindow = glfwCreateWindow(settings.getWidth(), settings.getHeight(),
 	                              "openFrameworks", nullptr, nullptr);
@@ -74,12 +91,8 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 
 	bIsSetup = true;
 	ofLogNotice("ofxAppEmscriptenWindow") << "Setup complete using emscripten-glfw";
-}
 
-//------------------------------------------------------------
-void ofxAppEmscriptenWindow::loop() {
-	instance->events().notifySetup();
-	emscripten_set_main_loop(display_cb, 0, true);  // 0 = use browser refresh rate
+	forceDarkTheme();
 }
 
 //------------------------------------------------------------
@@ -205,8 +218,14 @@ ofWindowMode ofxAppEmscriptenWindow::getWindowMode() {
 	return mCurrentWindowMode;
 }
 
+//------------------------------------------------------------
+void ofxAppEmscriptenWindow::loop() {
+	instance->events().notifySetup();
+	emscripten_set_main_loop(display_cb, 0, true);
+}
+
+//------------------------------------------------------------
 void ofxAppEmscriptenWindow::setFullscreen(bool fullscreen) {
-	// emscripten-glfw handles fullscreen via glfwSetWindowMonitor
 	if (fullscreen) {
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -214,12 +233,21 @@ void ofxAppEmscriptenWindow::setFullscreen(bool fullscreen) {
 		mCurrentWindowMode = OF_FULLSCREEN;
 	} else {
 		glfwSetWindowMonitor(glfwWindow, nullptr, 0, 0, mCachedWidth, mCachedHeight, 0);
-		mCurrentWindowMode = OF_WINDOW;
+		if (mTargetWindowMode == OF_GAME_MODE || mTargetWindowMode == OF_FULLSCREEN) {
+			mCurrentWindowMode = OF_GAME_MODE;
+		} else {
+			mCurrentWindowMode = OF_WINDOW;
+		}
 	}
 }
 
+//------------------------------------------------------------
 void ofxAppEmscriptenWindow::toggleFullscreen() {
-	setFullscreen(mCurrentWindowMode != OF_FULLSCREEN);
+	if (glfwGetWindowMonitor(glfwWindow) != nullptr) {
+		setFullscreen(false);
+	} else {
+		setFullscreen(true);
+	}
 }
 
 void ofxAppEmscriptenWindow::enableSetupScreen()  {

@@ -85,14 +85,8 @@ ifdef EMSCRIPTEN_MEMORY64
 endif
 
 PLATFORM_CXXFLAGS += --use-port=contrib.glfw3
-PLATFORM_CXXFLAGS += --shell-file $(OF_LIBS_PATH)/openFrameworksCompiled/project/emscripten/shell.html
 PROJECT_EMSCRIPTEN_TEMPLATE = $(OF_LIBS_PATH)/openFrameworksCompiled/project/emscripten/shell.html
-# ifdef PROJECT_EMSCRIPTEN_TEMPLATE
-#  	PLATFORM_LDFLAGS += --shell-file $(OF_LIBS_PATH)/openFrameworksCompiled/project/emscripten/shell.html
-#  	#$(PROJECT_EMSCRIPTEN_TEMPLATE)
-# else
-# 	PLATFORM_LDFLAGS += --shell-file $(OF_LIBS_PATH)/openFrameworksCompiled/project/emscripten/shell.html
-# endif
+
 ################################################################################
 # PLATFORM LDFLAGS
 #   This is a list of fully qualified LDFLAGS required when linking for this
@@ -157,6 +151,13 @@ PLATFORM_LDFLAGS += -s USE_GLFW=3 -lglfw
 #Do not change this!  
 #If there are errors we need to see them! 
 PLATFORM_LDFLAGS += -sERROR_ON_UNDEFINED_SYMBOLS=1
+
+# ifdef PROJECT_EMSCRIPTEN_TEMPLATE
+ 	PLATFORM_LDFLAGS += --shell-file $(PROJECT_EMSCRIPTEN_TEMPLATE)
+#  	#$(PROJECT_EMSCRIPTEN_TEMPLATE)
+# else
+# 	PLATFORM_LDFLAGS += --shell-file $(OF_LIBS_PATH)/openFrameworksCompiled/project/emscripten/shell.html
+# endif
 
 #PLATFORM_LDFLAGS += -s AUDIO_WORKLET=1 -s WASM_WORKERS=1 -sENVIRONMENT="web,worker" -s WEBAUDIO_DEBUG=1
 

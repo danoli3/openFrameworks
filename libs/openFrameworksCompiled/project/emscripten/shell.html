@@ -1,118 +1,32 @@
 <!doctype html>
 <html lang="EN-us">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>openFrameworks Emscripten</title>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
-    <style>
-        body {
-            background: rgb(20, 20, 20) !important;
-            color: #eee !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0 !important;
-            padding: 20px !important;
-        }
-
-        #canvas-container {
-            width: 75vw !important;
-            height: 50vh !important;
-            margin: 20px auto !important;
-            padding: 5px !important;
-            border: 1px solid #444 !important;
-            background: #111 !important;
-        }
-
-        #canvas {
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-            width: 100% !important;
-            height: 100% !important;
-        }
-
-        #canvas:focus {
-            outline: none !important;
-        }
-
-        #canvas-button {
-            text-align: center;
-            padding: 10px 0;
-        }
-
-        #output {
-            display: block !important;
-            width: 75vw !important;
-            max-width: 75vw !important;
-            height: 260px !important;
-            margin: 20px auto !important;
-            padding: 12px !important;
-            background: #000 !important;
-            color: #00ff9d !important;
-            font-family: monospace;
-            font-size: 14px;
-            line-height: 1.4;
-            border: 1px solid #333 !important;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-            resize: vertical;
-        }
-
-        h4 {
-            color: #fff !important;
-            margin: 15px 0 5px !important;
-        }
-    </style>
+  <title>emscripten glfw</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-    <h4>openFrameworks</h4>
 
-    <div id="canvas-container">
-        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-    </div>
+<div class="spinner" id='spinner'></div>
+      <div class="emscripten" id="status">Downloading...</div>
 
-    <div id="canvas-button">
-        <input id="fullscreen" type="button" value="Fullscreen"
-               onclick="Module.glfwRequestFullscreen ? Module.glfwRequestFullscreen('#canvas', false, true) : Module.requestFullscreen(0, true);">
-    </div>
-
-    <h4>Console <small></small></h4>
-    <textarea id="output" readonly></textarea>
-
-    <script>
-        var Module = {
-            print: function(text) {
-                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-                console.log(text);
-                var output = document.getElementById('output');
-                if (output) {
-                    output.value += text + '\n';
-                    output.scrollTop = output.scrollHeight;
-                }
-            },
-            printErr: function(text) {
-                if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-                console.error(text);
-                var output = document.getElementById('output');
-                if (output) {
-                    output.value += 'ERROR: ' + text + '\n';
-                    output.scrollTop = output.scrollHeight;
-                }
-            },
-
-            canvas: document.getElementById('canvas'),
-
-            // This runs AFTER Emscripten has finished initialising and tried to override styles
-            onRuntimeInitialized: function() {
-                console.log("openFrameworks + Emscripten runtime ready - forcing dark theme");
-                // Re-apply everything with !important in case Emscripten overrode it
-                document.body.style.setProperty('background', 'rgb(20, 20, 20)', 'important');
-                document.getElementById('canvas-container').style.setProperty('background', '#111', 'important');
-            }
-        };
-    </script>
-
-    {{{ SCRIPT }}}
+      <span id='controls'>
+      <span><input type="checkbox" id="resize">Resize canvas</span>
+      <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
+      <span><input type="button" id="fullscreenButton" value="Fullscreen"></span>
+    </span>
+<div id="canvas-container">
+  <progress value="0" max="100" id="progress" hidden=1></progress>
+  <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()">
+  </canvas>
+</div>
+<div id="canvas-button"><input id="fullscreen" type="button" name="fs" value="Fullscreen" onclick="Module.glfwRequestFullscreen('#canvas', false, true);"></div>
+<script async type="text/javascript" src="app.js"></script>
+<script>
+  var Module = {};
+</script>
+{{{ SCRIPT }}}
 </body>
 </html>

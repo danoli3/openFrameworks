@@ -7,6 +7,7 @@
  * Reworked to use emscripten-glfw (contrib.glfw3) - April 2026
  */
 
+
 #include "ofxAppEmscriptenWindow.h"
 #include "ofLog.h"
 #include "ofGLProgrammableRenderer.h"
@@ -84,7 +85,7 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 	glfwSetFramebufferSizeCallback(glfwWindow, resizeCallback);
 	glfwSetCursorEnterCallback(glfwWindow, cursorEnterCallback);
 
-	emscripten::glfw3::MakeCanvasResizable(glfwWindow, "window");
+	emscripten::glfw3::MakeCanvasResizable(window, "#canvas-container");
 
 	mCurrentWindowMode = settings.windowMode;
 	mTargetWindowMode = settings.windowMode;
@@ -92,11 +93,30 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 	bIsSetup = true;
 	ofLogNotice("ofxAppEmscriptenWindow") << "Setup complete using emscripten-glfw";
 
-	forceDarkTheme();
+	emscripten_set_main_loop_arg(main_loop, glfwWindow, 0, GLFW_FALSE);
+
+}
+
+void main_loop(void *user_data)
+{
+  auto window = reinterpret_cast<GLFWwindow *>(user_data);
+  if(!glfwWindowShouldClose(window))
+  {
+    glfwPollEvents();
+    display_cb();
+  }
+  else
+  {
+    // done => terminating
+    glfwTerminate();
+    emscripten_cancel_main_loop();
+  }
 }
 
 //------------------------------------------------------------
 void ofxAppEmscriptenWindow::update() {
+	glfwPollEvents();
+
 	events().notifyUpdate();
 }
 
@@ -108,6 +128,7 @@ void ofxAppEmscriptenWindow::draw() {
 	events().notifyDraw();
 
 	renderer()->finishRender();
+
 	glfwSwapBuffers(glfwWindow);
 }
 
@@ -221,15 +242,15 @@ ofWindowMode ofxAppEmscriptenWindow::getWindowMode() {
 //------------------------------------------------------------
 void ofxAppEmscriptenWindow::loop() {
 	instance->events().notifySetup();
-	emscripten_set_main_loop(display_cb, 0, true);
 }
 
 //------------------------------------------------------------
 void ofxAppEmscriptenWindow::setFullscreen(bool fullscreen) {
 	if (fullscreen) {
-		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-		glfwSetWindowMonitor(glfwWindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+		// GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+		// const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+		// glfwSetWindowMonitor(glfwWindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+		emscripten::glfw3::RequestFullscreen(window, false, true);
 		mCurrentWindowMode = OF_FULLSCREEN;
 	} else {
 		glfwSetWindowMonitor(glfwWindow, nullptr, 0, 0, mCachedWidth, mCachedHeight, 0);

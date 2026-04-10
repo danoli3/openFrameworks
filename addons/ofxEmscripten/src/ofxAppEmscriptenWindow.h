@@ -10,6 +10,7 @@
 #ifndef OFAPPEMSCRIPTENWINDOW_H_
 #define OFAPPEMSCRIPTENWINDOW_H_
 
+
 #include "ofConstants.h"
 #include "ofAppBaseWindow.h"
 #include "ofEvents.h"

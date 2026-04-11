@@ -22,7 +22,7 @@ using std::unordered_map;
 bool ofVbo::vaoSupported=true;
 bool ofVbo::vaoChecked=false;
 
-#ifdef TARGET_OPENGLES
+#ifdef TARGET_OPENGLES && !defined(TARGET_EMSCRIPTEN)
 	#include <dlfcn.h>
 	typedef void (* glGenVertexArraysType) (GLsizei n,  GLuint *arrays);
 	glGenVertexArraysType glGenVertexArraysFunc = nullptr;
@@ -837,121 +837,113 @@ const ofBufferObject & ofVbo::getIndexBuffer() const{
 }
 
 //--------------------------------------------------------------
-void ofVbo::bind() const {
+void ofVbo::bind() const{
 	bool programmable = ofIsGLProgrammableRenderer();
-
-	// VAO handling
-	if (programmable && (vaoSupported || !vaoChecked)) {
-		if (vaoID == 0) {
-#if defined(TARGET_OPENGLES) && !defined(TARGET_EMSCRIPTEN)
-			// Pure GLES 2.0 — try to load VAO extension via dlsym
-			if (glGenVertexArrays == 0 && !vaoChecked) {
+	if(programmable && (vaoSupported || !vaoChecked)){
+		if(vaoID==0){
+			#if defined(TARGET_EMSCRIPTEN)
+				vaoChecked = true;
+				vaoSupported = true;
+			#elif defined(TARGET_OPENGLES)
+			if(glGenVertexArrays==0 && !vaoChecked){
 				glGenVertexArrays = (glGenVertexArraysType)dlsym(RTLD_DEFAULT, "glGenVertexArrays");
 				glDeleteVertexArrays = (glDeleteVertexArraysType)dlsym(RTLD_DEFAULT, "glDeleteVertexArrays");
 				glBindVertexArray = (glBindVertexArrayType)dlsym(RTLD_DEFAULT, "glBindVertexArray");
 				vaoChecked = true;
-				vaoSupported = glGenVertexArrays != nullptr;
+				vaoSupported = glGenVertexArrays;
 			}
-#elif defined(TARGET_EMSCRIPTEN)
-			// Emscripten (WebGL2) does not reliably support VAOs in this context
-			vaoChecked = true;
-			vaoSupported = false;
-#else
-			// Desktop + GLES 3.0+ — VAOs are core
-			vaoChecked = true;
-			vaoSupported = true;
-#endif
-
-			if (vaoSupported && glGenVertexArrays != nullptr) {
-				glGenVertexArrays(1, &const_cast<ofVbo*>(this)->vaoID);
-			} else if (vaoSupported && glGenVertexArrays == nullptr) {
+			#elif  defined(TARGET_EMSCRIPTEN)
+				vaoChecked = true;
 				vaoSupported = false;
-			}
-			
-			if (vaoID != 0) {
+			#else
+				vaoChecked = true;
+				vaoSupported = true;
+			#endif
+			if(vaoSupported) glGenVertexArrays(1, &const_cast<ofVbo*>(this)->vaoID);
+			if(vaoID!=0){
 				retainVAO(vaoID);
 				vaoChanged = true;
 			}
 		}
-
-		if (vaoSupported && glBindVertexArray != nullptr) {
-			glBindVertexArray(vaoID);
-		}
-	} else {
+		if(vaoSupported) glBindVertexArray(vaoID);
+	}else{
 		vaoSupported = false;
 	}
 
-	// attribute setup
-	if (vaoChanged || !vaoSupported) {
-		if (bUsingVerts) {
-			positionAttribute.bind();
-			if (programmable) {
-				positionAttribute.enable();
-			} else {
-#ifndef TARGET_PROGRAMMABLE_GL
+	if(vaoChanged || !vaoSupported){
+		if(bUsingVerts){
+			if(!programmable){
+				positionAttribute.bind();
+				#ifndef TARGET_PROGRAMMABLE_GL
 				glEnableClientState(GL_VERTEX_ARRAY);
 				glVertexPointer(positionAttribute.numCoords, GL_FLOAT,
-								positionAttribute.stride, (void*)positionAttribute.offset);
-#endif
+								positionAttribute.stride,
+								(void*)positionAttribute.offset);
+				#endif
+			}else{
+				positionAttribute.enable();
 			}
-		} else if (programmable) {
+		}else if(programmable){
 			positionAttribute.disable();
 		}
 
-		if (bUsingColors) {
-			colorAttribute.bind();
-			if (programmable) {
-				colorAttribute.enable();
-			} else {
-#ifndef TARGET_PROGRAMMABLE_GL
+		if(bUsingColors) {
+			if(!programmable){
+				colorAttribute.bind();
+				#ifndef TARGET_PROGRAMMABLE_GL
 				glEnableClientState(GL_COLOR_ARRAY);
 				glColorPointer(colorAttribute.numCoords, GL_FLOAT,
-							   colorAttribute.stride, (void*)colorAttribute.offset);
-#endif
+						colorAttribute.stride,
+							   (void*)colorAttribute.offset);
+				#endif
+			}else{
+				colorAttribute.enable();
 			}
-		} else if (programmable) {
+		}else if(programmable){
 			colorAttribute.disable();
 		}
 
-		if (bUsingNormals) {
-			normalAttribute.bind();
-			if (programmable) {
-				normalAttribute.enable();
-			} else {
-#ifndef TARGET_PROGRAMMABLE_GL
+		if(bUsingNormals) {
+			if(!programmable){
+				normalAttribute.bind();
+				#ifndef TARGET_PROGRAMMABLE_GL
 				glEnableClientState(GL_NORMAL_ARRAY);
 				glNormalPointer(GL_FLOAT, normalAttribute.stride,
 								(void*)normalAttribute.offset);
-#endif
+				#endif
+			}else{
+				normalAttribute.enable();
 			}
-		} else if (programmable) {
+		}else if(programmable){
 			normalAttribute.disable();
 		}
 
-		if (bUsingTexCoords) {
-			texCoordAttribute.bind();
-			if (programmable) {
-				texCoordAttribute.enable();
-			} else {
-#ifndef TARGET_PROGRAMMABLE_GL
+		if(bUsingTexCoords) {
+			if(!programmable){
+				texCoordAttribute.bind();
+				#ifndef TARGET_PROGRAMMABLE_GL
 				glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-				glTexCoordPointer(texCoordAttribute.numCoords, GL_FLOAT,
-								  texCoordAttribute.stride, (void*)texCoordAttribute.offset);
-#endif
+				glTexCoordPointer(texCoordAttribute.numCoords,
+								  GL_FLOAT, texCoordAttribute.stride,
+								  (void*)texCoordAttribute.offset);
+				#endif
+			}else{
+				texCoordAttribute.enable();
 			}
-		} else if (programmable) {
+		}else if(programmable){
 			texCoordAttribute.disable();
 		}
 
-		if (bUsingIndices) {
-			indexAttribute.bind();
+        if (bUsingIndices) {
+            indexAttribute.bind();
+        }
+
+		unordered_map<int,VertexAttribute>::const_iterator it;
+		for(it = customAttributes.begin();it!=customAttributes.end();it++){
+			it->second.enable();
 		}
 
-		for (auto& it : customAttributes) {
-			it.second.enable();
-		}
-
-		vaoChanged = false;
+		vaoChanged=false;
 	}
 }
 

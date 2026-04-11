@@ -412,15 +412,13 @@ void ofBackgroundGradient(const ofFloatColor& start, const ofFloatColor& end, of
 	float w = ofGetViewportWidth(), h = ofGetViewportHeight();
 	gradientMesh.clear();
 	gradientMesh.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
-#ifdef GL_STREAM_DRAW
-    #ifdef TARGET_OPENGLES
-        if(ofIsGLProgrammableRenderer()) {
-            gradientMesh.setUsage(GL_STREAM_DRAW);
-        }
-    #else
-        gradientMesh.setUsage(GL_STREAM_DRAW);
-    #endif
-#endif
+
+	#ifdef TARGET_OPENGLES
+	if (ofIsGLProgrammableRenderer()) gradientMesh.setUsage(GL_STREAM_DRAW);
+	#else
+	gradientMesh.setUsage(GL_STREAM_DRAW);
+	#endif
+
 	if (mode == OF_GRADIENT_CIRCULAR) {
 		// this could be optimized by building a single mesh once, then copying
 		// it and just adding the colors whenever the function is called.

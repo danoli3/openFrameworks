@@ -17,18 +17,13 @@ using namespace std;
 
 ofxAppEmscriptenWindow * ofxAppEmscriptenWindow::instance = nullptr;
 
+static void main_loop(void* user_data);
+static void display_cb();
+
 void consoleErrorHandler(int iErrorCode, char const *iErrorMessage)
 {
   printf("glfwError: %d | %s\n", iErrorCode, iErrorMessage);
 }
-
-EM_JS(void, forceDarkTheme, (), {
-    document.body.style.setProperty('background', 'rgb(20,20,20)', 'important');
-    document.getElementById('canvas-container').style.setProperty('background', '#111', 'important');
-    // you can also style #output, canvas, etc. here
-});
-
-
 
 //------------------------------------------------------------
 ofxAppEmscriptenWindow::ofxAppEmscriptenWindow() {
@@ -55,14 +50,9 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 	// which html canvas to use
 	emscripten::glfw3::SetNextWindowCanvasSelector("#canvas");
 
-	// Hi-DPI support
-	glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_TRUE);
-
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ES_API);
-
-	glfwWindowHint(GLFW_SCALE_FRAMEBUFFER, GLFW_FALSE);
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
 
 	glfwWindow = glfwCreateWindow(settings.getWidth(), settings.getHeight(),
 	                              "openFrameworks", nullptr, nullptr);
@@ -85,7 +75,7 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 	glfwSetFramebufferSizeCallback(glfwWindow, resizeCallback);
 	glfwSetCursorEnterCallback(glfwWindow, cursorEnterCallback);
 
-	emscripten::glfw3::MakeCanvasResizable(window, "#canvas-container");
+	emscripten::glfw3::MakeCanvasResizable(glfwWindow, "#canvas-container");
 
 	mCurrentWindowMode = settings.windowMode;
 	mTargetWindowMode = settings.windowMode;
@@ -97,26 +87,26 @@ void ofxAppEmscriptenWindow::setup(const ofGLESWindowSettings & settings) {
 
 }
 
-void main_loop(void *user_data)
-{
-  auto window = reinterpret_cast<GLFWwindow *>(user_data);
-  if(!glfwWindowShouldClose(window))
-  {
-    glfwPollEvents();
-    display_cb();
-  }
-  else
-  {
-    // done => terminating
-    glfwTerminate();
-    emscripten_cancel_main_loop();
-  }
+static void main_loop(void* user_data) {
+    auto window = reinterpret_cast<GLFWwindow*>(user_data);
+    if (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        display_cb();
+    } else {
+        glfwTerminate();
+        emscripten_cancel_main_loop();
+    }
+}
+
+static void display_cb() {
+    if (auto* inst = ofxAppEmscriptenWindow::getInstance()) {
+        inst->update();
+        inst->draw();
+    }
 }
 
 //------------------------------------------------------------
 void ofxAppEmscriptenWindow::update() {
-	glfwPollEvents();
-
 	events().notifyUpdate();
 }
 
@@ -124,21 +114,10 @@ void ofxAppEmscriptenWindow::update() {
 void ofxAppEmscriptenWindow::draw() {
 	renderer()->startRender();
 	if (bEnableSetupScreen) renderer()->setupScreen();
-
 	events().notifyDraw();
-
 	renderer()->finishRender();
-
-	glfwSwapBuffers(glfwWindow);
 }
 
-//------------------------------------------------------------
-void ofxAppEmscriptenWindow::display_cb() {
-	if (instance) {
-		instance->update();
-		instance->draw();
-	}
-}
 
 void ofxAppEmscriptenWindow::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
@@ -250,7 +229,7 @@ void ofxAppEmscriptenWindow::setFullscreen(bool fullscreen) {
 		// GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 		// const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 		// glfwSetWindowMonitor(glfwWindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-		emscripten::glfw3::RequestFullscreen(window, false, true);
+		emscripten::glfw3::RequestFullscreen(glfwWindow, false, true);
 		mCurrentWindowMode = OF_FULLSCREEN;
 	} else {
 		glfwSetWindowMonitor(glfwWindow, nullptr, 0, 0, mCachedWidth, mCachedHeight, 0);

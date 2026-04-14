@@ -1,137 +1,104 @@
+/*
+ * app.js - openFrameworks Emscripten (pongasoft GLFW 3.4 port)
+ * Updated April 2026 for CMake migration + ofxAppEmscriptenWindow
+ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM fully loaded and parsed');
-  const canvas = document.getElementById('canvas');
-  if (!canvas) {
-    console.error("Canvas element not found!");
-    return;
-  }
-  canvas.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-  });
+    console.log('DOM fully loaded - openFrameworks Emscripten runtime');
 
-  function goEmscriptenFullscreen(resize) {
-    Module.requestFullscreen(0, resize);
-  }
-
-  function tryFullScreen(aspect, resize) {
-    var canvas = document.getElementById("canvas");
-    if (resize) {
-      canvas.width = screen.width;
-      canvas.height = screen.height;
+    const canvas = document.getElementById('canvas');
+    if (!canvas) {
+        console.error("Canvas element not found!");
+        return;
     }
-    if (canvas.requestFullScreen) {
-      if (aspect) goEmscriptenFullscreen(resize);
-      else canvas.requestFullScreen();
-    } else if (canvas.webkitRequestFullScreen) {
-      if (aspect) goEmscriptenFullscreen(resize);
-      else canvas.webkitRequestFullScreen();
-    } else if (canvas.mozRequestFullScreen) {
-      if (aspect) goEmscriptenFullscreen(resize);
-      else canvas.mozRequestFullScreen();
-    } else {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      document.getElementById("header").style.display = "none";
-      document.getElementById("output").style.display = "none";
-    }
-  }
-});
 
-  var statusElement = document.getElementById("status");
-  var progressElement = document.getElementById("progress");
-  var spinnerElement = document.getElementById("spinner");
+    // Prevent right-click context menu on canvas (common OF request)
+    canvas.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
 
-  var Module = {
-    print: (function () {
-      var element = document.getElementById("output");
-      if (element) element.value = ""; // clear browser cache
-      return (...args) => {
-        var text = args.join(" ");
-        console.log(text);
-        if (element) {
-          element.value += text + "\n";
-          element.scrollTop = element.scrollHeight; // focus on bottom
-        }
-      };
-    })(),
-    canvas: (() => {
-      var canvas = document.getElementById("canvas");
-      canvas.addEventListener(
-        "webglcontextlost",
-        (e) => {
-          alert("WebGL context lost. You will need to reload the page.");
-          e.preventDefault();
+    // Minimal Module configuration (Emscripten runtime glue)
+    var statusElement = document.getElementById("status");
+    var progressElement = document.getElementById("progress");
+    var spinnerElement = document.getElementById("spinner");
+
+    window.Module = {
+        print: (function () {
+            var element = document.getElementById("output");
+            if (element) element.value = "";
+            return (...args) => {
+                var text = args.join(" ");
+                console.log(text);
+                if (element) {
+                    element.value += text + "\n";
+                    element.scrollTop = element.scrollHeight;
+                }
+            };
+        })(),
+
+        canvas: (() => {
+            canvas.addEventListener("webglcontextlost", (e) => {
+                alert("WebGL context lost. You will need to reload the page.");
+                e.preventDefault();
+            }, false);
+            return canvas;
+        })(),
+
+        setStatus: (text) => {
+            Module.setStatus.last ??= { time: Date.now(), text: "" };
+            if (text === Module.setStatus.last.text) return;
+            var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+            var now = Date.now();
+            if (m && now - Module.setStatus.last.time < 30) return;
+            Module.setStatus.last.time = now;
+            Module.setStatus.last.text = text;
+
+            if (m) {
+                text = m[1];
+                progressElement.value = parseInt(m[2]) * 100;
+                progressElement.max = parseInt(m[4]) * 100;
+                progressElement.hidden = false;
+                spinnerElement.hidden = false;
+            } else {
+                progressElement.hidden = true;
+                if (!text) spinnerElement.style.display = "none";
+            }
+            if (statusElement) statusElement.innerHTML = text;
         },
-        false
-      );
-      return canvas;
-    })(),
-    setStatus: (text) => {
-      Module.setStatus.last ??= { time: Date.now(), text: "" };
-      if (text === Module.setStatus.last.text) return;
-      var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-      var now = Date.now();
-      if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
-      Module.setStatus.last.time = now;
-      Module.setStatus.last.text = text;
-      if (m) {
-        text = m[1];
-        progressElement.value = parseInt(m[2]) * 100;
-        progressElement.max = parseInt(m[4]) * 100;
-        progressElement.hidden = false;
-        spinnerElement.hidden = false;
-      } else {
-        progressElement.value = null;
-        progressElement.max = null;
-        progressElement.hidden = true;
-        if (!text) spinnerElement.style.display = "none";
-      }
-      statusElement.innerHTML = text;
-    },
-    totalDependencies: 0,
-    monitorRunDependencies: (left) => {
-      this.totalDependencies = Math.max(this.totalDependencies, left);
-      Module.setStatus(
-        left
-          ? `Preparing... (${this.totalDependencies - left}/${this.totalDependencies})`
-          : "All downloads complete."
-      );
-    },
-  };
 
-  Module.setStatus("Downloading...");
-  window.onerror = (text) => {
-    console.log("onerror text:", text);
-    const total = Module.totalDependencies || 1; // Default to avoid division by zero
-    const left = text.match(/(\d+)\/(\d+)/);
-    if (!left) {
-      console.warn("Progress information missing or invalid.");
-      Module.setStatus("Error: Progress information missing or invalid, see JavaScript console");
-      return;
-    }
-    Module.setStatus("Exception thrown, see JavaScript console");
-    spinnerElement.style.display = "none";
-    Module.setStatus = (text) => {
-      if (text) console.error(`[post-exception status] ${text}`);
+        monitorRunDependencies: (left) => {
+            Module.setStatus(left
+                ? `Preparing... (${Module.totalDependencies - left}/${Module.totalDependencies})`
+                : "All downloads complete."
+            );
+        },
+
+        totalDependencies: 0
     };
-  };
 
-  const fullscreenButton = document.getElementById('fullscreenButton');
+    Module.setStatus("Downloading...");
 
-  // Attach the event listener to handle fullscreen functionality
-  fullscreenButton.addEventListener('click', () => {
-    const pointerLock = document.getElementById('pointerLock').checked;
-    const resize = document.getElementById('resize').checked;
+    // Fullscreen button (now uses GLFW-aware API from ofxAppEmscriptenWindow)
+    const fullscreenButton = document.getElementById('fullscreenButton');
+    if (fullscreenButton) {
+        fullscreenButton.addEventListener('click', () => {
+            const pointerLock = document.getElementById('pointerLock')?.checked ?? false;
+            const resize = document.getElementById('resize')?.checked ?? true;
 
-    // Ensure `Module.requestFullscreen` is available before calling it
-    if (typeof Module.requestFullscreen === 'function') {
-      Module.requestFullscreen(pointerLock, resize);
-    } else {
-      console.error('Module.requestFullscreen is not defined.');
+            if (typeof Module.requestFullscreen === 'function') {
+                Module.requestFullscreen(pointerLock, resize);
+            } else if (typeof emscripten_glfw_request_fullscreen === 'function') {
+                // fallback for newer GLFW port
+                emscripten_glfw_request_fullscreen(pointerLock, resize);
+            } else {
+                console.error('Fullscreen API not available');
+            }
+        });
     }
-  });
-// });
 
-
-
+    window.onerror = (text) => {
+        console.error("Emscripten runtime error:", text);
+        Module.setStatus("Exception thrown, see JavaScript console");
+        if (spinnerElement) spinnerElement.style.display = "none";
+    };
+});

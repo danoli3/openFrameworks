@@ -74,10 +74,10 @@ public:
 
 	bool bIsSetup = false;
 
+	static ofxAppEmscriptenWindow* getInstance() { return instance; }
+
 private:
 	static ofxAppEmscriptenWindow * instance;
-
-	static void display_cb();
 
 	// GLFW callbacks
 	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);

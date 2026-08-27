@@ -14,7 +14,7 @@ LEGACY=0
 SILENT_ARGS=""
 NO_SSL=""
 BLEEDING_EDGE=0
-DL_VERSION=2.7.4
+DL_VERSION=2.7.5
 TAG=""
 REPO="latest"
 SHA_VERIFIED=0
@@ -32,7 +32,8 @@ cat << EOF
     -p, --platform PLATFORM     Platorm among: android, emscritpen, ios, linux, linux64, linuxarmv6l, linuxarmv7l, msys2, osx, tvos, vs
                                 If not specified tries to autodetect the platform.
     -a, --arch ARCH             Architecture:
-                                    vs: 64
+                                    vs: 64, arm64, arm64ec, all
+                                      arm64 also downloads x64 (and arm64ec)
                                     msys2: 64
                                     android: armv7, arm64, and x86 (if not specified will download all)
                                     linux: 64gcc6, armv6l or armv7l
@@ -357,9 +358,11 @@ elif [ "$PLATFORM" == "vs" ]; then
                   openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64ec_1.zip \
                   openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64ec_2.zip"
         elif [[ "$ARCH" == "arm64" ]]; then
-            # Windows on ARM: native arm64 + arm64ec (x64-compat) for Win11 ARM
-            echo " VS packages: arm64 + arm64ec (Windows on ARM host)"
-            PKGS="openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64_1.zip \
+            # Windows on ARM: include x64 alongside native arm64 and arm64ec.
+            echo " VS packages: 64 + arm64 + arm64ec (Windows on ARM host)"
+            PKGS="openFrameworksLibs_${VER}_${VS_PLATFORM}_64_1.zip \
+                  openFrameworksLibs_${VER}_${VS_PLATFORM}_64_2.zip \
+                  openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64_1.zip \
                   openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64_2.zip \
                   openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64ec_1.zip \
                   openFrameworksLibs_${VER}_${VS_PLATFORM}_arm64ec_2.zip"
@@ -377,6 +380,16 @@ elif [ "$PLATFORM" == "vs" ]; then
                   openFrameworksLibs_${VER}_${PLATFORM}_64_2.zip \
                   openFrameworksLibs_${VER}_${PLATFORM}_64_3.zip \
                   openFrameworksLibs_${VER}_${PLATFORM}_64_4.zip"
+        elif [[ "$ARCH" == "arm64" ]]; then
+            echo " VS packages: 64 + arm64 (Windows on ARM host)"
+            PKGS="openFrameworksLibs_${VER}_${PLATFORM}_64_1.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_64_2.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_64_3.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_64_4.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_arm64_1.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_arm64_2.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_arm64_3.zip \
+                  openFrameworksLibs_${VER}_${PLATFORM}_arm64_4.zip"
         else
             PKGS="openFrameworksLibs_${VER}_${PLATFORM}_${ARCH}_1.zip \
                   openFrameworksLibs_${VER}_${PLATFORM}_${ARCH}_2.zip \

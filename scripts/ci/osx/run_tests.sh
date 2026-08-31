@@ -23,9 +23,9 @@ echo "##[endgroup]"
 echo "##[group]**** Running unit tests ****"
 cd $ROOT/tests
 for group in *; do
-    if [ "$group" = "android" ]; then
-        continue
-    fi
+    case "$group" in
+        android|ios|tvOS|emscripten) continue ;;
+    esac
     if [ -d $group ]; then
         echo "##[group] $group"
         for test in $group/*; do

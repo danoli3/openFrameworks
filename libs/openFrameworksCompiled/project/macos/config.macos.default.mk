@@ -82,7 +82,12 @@ ifndef MAC_OS_C_VER
 endif
 
 ifndef MAC_OS_CPP_VER
-    MAC_OS_CPP_VER = -std=c++2b
+	# Prefer ISO C++23. Apple Clang 15 from the command line only accepts the draft alias c++2b.
+	ifeq ($(shell echo 'int main(){return 0;}' | xcrun clang++ -std=c++23 -x c++ - -fsyntax-only >/dev/null 2>&1; echo $$?),0)
+		MAC_OS_CPP_VER = -std=c++23
+	else
+		MAC_OS_CPP_VER = -std=c++2b
+	endif
 endif
 
 # Link against libstdc++ to silence tr1/memory errors on latest versions of osx

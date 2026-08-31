@@ -12,11 +12,8 @@
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-    </ClCompile>
-    <ClCompile>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
       <CompileAs>CompileAsCpp</CompileAs>
-    </ClCompile>
-    <ClCompile>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>

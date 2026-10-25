@@ -23,4 +23,11 @@
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
   </ItemGroup>
+  <!-- Prebuilt libs (apothecary) are built with MSVC 14.44 (VS 2022 17.14); an older toolset can't link them (LNK2001 __std_find_*, __std_search_1, _Thrd_sleep_for). OF_MIN_VCTOOLS_VERSION=0 skips the check. -->
+  <PropertyGroup>
+    <OF_MIN_VCTOOLS_VERSION Condition="'$(OF_MIN_VCTOOLS_VERSION)'==''">14.44</OF_MIN_VCTOOLS_VERSION>
+  </PropertyGroup>
+  <Target Name="OFCheckVCToolsVersion" BeforeTargets="PrepareForBuild" Condition="'$(VCToolsVersion)'!='' and '$(OF_MIN_VCTOOLS_VERSION)'!='0'">
+    <Error Condition="$([MSBuild]::VersionLessThan('$(VCToolsVersion)', '$(OF_MIN_VCTOOLS_VERSION)'))" Text="MSVC toolset $(VCToolsVersion) is older than $(OF_MIN_VCTOOLS_VERSION) which openFrameworks libs are built with - update Visual Studio (Visual Studio Installer > Update, VS 2022 17.14+ or VS 2026) or the link fails with LNK2001 __std_find_* / __std_search_1 / _Thrd_sleep_for" />
+  </Target>
 </Project>

@@ -1,0 +1,73 @@
+# ARM64X test: one DLL with ARM64 and ARM64EC code, built from openFrameworks'
+# existing ARM64 / ARM64EC libraries, loaded by ARM64, ARM64EC and x64 hosts.
+name: arm64x-test
+
+on:
+  push:
+    branches: [arm64x-test]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  arm64x:
+    runs-on: windows-11-arm
+    defaults:
+      run:
+        working-directory: test/arm64x
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: openFrameworks libraries (apothecary latest, VS ARM64 and ARM64EC)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory libs | Out-Null
+          foreach ($arch in 'arm64', 'arm64ec') {
+            foreach ($n in 1, 2) {
+              $zip = "openFrameworksLibs_latest_vs_${arch}_$n.zip"
+              curl.exe -sfL --retry 3 -o $zip "https://github.com/openframeworks/apothecary/releases/download/latest/$zip"
+              if ($LASTEXITCODE -ne 0) { throw "download failed: $zip" }
+              tar -xf $zip -C libs
+              Remove-Item $zip
+            }
+          }
+          Get-ChildItem libs | ForEach-Object Name
+          Get-ChildItem -Recurse libs\zlib\lib, libs\libpng\lib, libs\pugixml\lib -Filter *.lib | ForEach-Object FullName
+
+      - name: Build from the command line (link /machine:arm64x)
+        shell: cmd
+        run: build.bat
+
+      - name: Build with MSBuild (BuildAsX)
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          & "$vs\MSBuild\Current\Bin\MSBuild.exe" oftest.vcxproj /p:Configuration=Release /p:Platform=ARM64EC /v:minimal /nologo
+          if ($LASTEXITCODE -ne 0) { throw "msbuild failed" }
+          Get-ChildItem -Recurse msbuild-out | ForEach-Object FullName
+
+      - name: dumpbin headers
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VS=%%i"
+          call "%VS%\VC\Auxiliary\Build\vcvarsall.bat" arm64 > nul
+          echo == out\oftest.dll (command line)
+          dumpbin /headers out\oftest.dll | findstr /i "machine ARM64X hybrid"
+          echo == msbuild-out\ARM64EC\oftest.dll (BuildAsX)
+          dumpbin /headers msbuild-out\ARM64EC\oftest.dll | findstr /i "machine ARM64X hybrid"
+          dumpbin /exports msbuild-out\ARM64EC\oftest.dll | findstr /i "oftest_"
+
+      - name: Load the DLLs from ARM64, ARM64EC and x64 processes
+        shell: cmd
+        run: |
+          copy /y msbuild-out\ARM64EC\oftest.dll out\oftest_msbuild.dll > nul
+          cd out
+          set fail=0
+          for %%d in (oftest.dll oftest_msbuild.dll) do (
+            echo == %%d
+            for %%h in (arm64 arm64ec x64) do (
+              host_%%h.exe %%d || set fail=1
+            )
+          )
+          exit /b %fail%

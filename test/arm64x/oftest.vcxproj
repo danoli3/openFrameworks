@@ -42,6 +42,13 @@
       <AdditionalDependencies>zlib.lib;libpng.lib;pugixml.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <!-- BuildAsX links the ARM64 code too, but only with the ARM64EC $(Platform) libraries:
+       give it the ARM64 libraries by full path (same names in both folders) -->
+  <ItemDefinitionGroup Condition="'$(Platform)'=='ARM64EC' and '$(BuildAsX)'=='true'">
+    <Link>
+      <AdditionalDependencies>$(ProjectDir)libs\zlib\lib\vs\ARM64\zlib.lib;$(ProjectDir)libs\libpng\lib\vs\ARM64\libpng.lib;$(ProjectDir)libs\pugixml\lib\vs\ARM64\pugixml.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="oftest.cpp" />
   </ItemGroup>

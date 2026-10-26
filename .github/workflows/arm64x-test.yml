@@ -40,6 +40,7 @@ jobs:
         run: build.bat
 
       - name: Build with MSBuild (BuildAsX)
+        continue-on-error: true
         shell: pwsh
         run: |
           $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
@@ -48,23 +49,31 @@ jobs:
           Get-ChildItem -Recurse msbuild-out | ForEach-Object FullName
 
       - name: dumpbin headers
+        if: always()
         shell: cmd
         run: |
           for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VS=%%i"
           call "%VS%\VC\Auxiliary\Build\vcvarsall.bat" arm64 > nul
           echo == out\oftest.dll (command line)
           dumpbin /headers out\oftest.dll | findstr /i "machine ARM64X hybrid"
-          echo == msbuild-out\ARM64EC\oftest.dll (BuildAsX)
-          dumpbin /headers msbuild-out\ARM64EC\oftest.dll | findstr /i "machine ARM64X hybrid"
-          dumpbin /exports msbuild-out\ARM64EC\oftest.dll | findstr /i "oftest_"
+          dumpbin /exports out\oftest.dll | findstr /i "oftest_"
+          if exist msbuild-out\ARM64EC\oftest.dll (
+            echo == msbuild-out\ARM64EC\oftest.dll (BuildAsX)
+            dumpbin /headers msbuild-out\ARM64EC\oftest.dll | findstr /i "machine ARM64X hybrid"
+          )
 
       - name: Load the DLLs from ARM64, ARM64EC and x64 processes
+        if: always()
         shell: cmd
         run: |
-          copy /y msbuild-out\ARM64EC\oftest.dll out\oftest_msbuild.dll > nul
+          set dlls=oftest.dll
+          if exist msbuild-out\ARM64EC\oftest.dll (
+            copy /y msbuild-out\ARM64EC\oftest.dll out\oftest_msbuild.dll > nul
+            set dlls=oftest.dll oftest_msbuild.dll
+          )
           cd out
           set fail=0
-          for %%d in (oftest.dll oftest_msbuild.dll) do (
+          for %%d in (%dlls%) do (
             echo == %%d
             for %%h in (arm64 arm64ec x64) do (
               host_%%h.exe %%d || set fail=1

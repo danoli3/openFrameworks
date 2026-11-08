@@ -167,6 +167,18 @@ public:
     int glesVersionMinor;
 };
 
+/// Colour output of the Dawn (WebGPU) window/renderer.
+/// SDR: 8-bit sRGB (default, unchanged).
+/// WideGamut: 8-bit Display P3 (colours are treated as P3, so sRGB art looks more saturated).
+/// HDR: float16 extended-range linear Display P3 (EDR on Apple). Colour values above 1.0 are brighter than
+/// SDR white, up to the display headroom (ofWebGPURenderer::getHDRHeadroom()). Falls back to WideGamut if
+/// the surface can't do float16.
+enum class ofDawnColorMode {
+	SDR,
+	WideGamut,
+	HDR
+};
+
 class ofDawnWindowSettings: public ofWindowSettings{
 public:
 	ofDawnWindowSettings() = default;
@@ -178,10 +190,13 @@ public:
 			vsync = dawnSettings->vsync;
 			resizable = dawnSettings->resizable;
 			decorated = dawnSettings->decorated;
+			colorMode = dawnSettings->colorMode;
 		}
 	}
 
 	bool vsync = true;
 	bool resizable = true;
 	bool decorated = true;
+	/// Defaults to ofWebGPURenderer::getDefaultColorMode() if left as SDR and a default was set.
+	ofDawnColorMode colorMode = ofDawnColorMode::SDR;
 };

@@ -98,6 +98,18 @@ void ofAppDawnWindow::setup(const ofDawnWindowSettings & _settings) {
 	attachMetalLayer();
 
 	auto renderer = std::make_shared<ofWebGPURenderer>(this);
+	if(settings.colorMode != ofDawnColorMode::SDR) {
+		renderer->setColorMode(settings.colorMode);
+	}
+#if defined(TARGET_OSX) || defined(TARGET_OF_MAC)
+	if(renderer->getRequestedColorMode() == ofDawnColorMode::HDR) {
+		// opt the layer in to extended dynamic range (EDR) content
+		CAMetalLayer * hdrLayer = (__bridge CAMetalLayer *)metalLayer;
+		if([hdrLayer respondsToSelector:@selector(setWantsExtendedDynamicRangeContent:)]) {
+			hdrLayer.wantsExtendedDynamicRangeContent = YES;
+		}
+	}
+#endif
 	int fbw = 0;
 	int fbh = 0;
 	glfwGetFramebufferSize(windowP, &fbw, &fbh);
@@ -162,6 +174,18 @@ void ofAppDawnWindow::draw() {
 		glfwShowWindow(windowP);
 		bWindowNeedsShowing = false;
 	}
+#if defined(TARGET_OSX) || defined(TARGET_OF_MAC)
+	if(auto * dawnRenderer = dynamic_cast<ofWebGPURenderer *>(currentRenderer.get())) {
+		if(dawnRenderer->isHDR() && windowP) {
+			// EDR headroom changes with brightness / ambient light / which screen the window is on
+			NSWindow * hdrWindow = glfwGetCocoaWindow(windowP);
+			NSScreen * screen = hdrWindow.screen;
+			if(screen) {
+				dawnRenderer->setHDRHeadroom((float)screen.maximumExtendedDynamicRangeColorComponentValue);
+			}
+		}
+	}
+#endif
 	currentRenderer->startRender();
 	if(currentRenderer->getBackgroundAuto()) {
 		currentRenderer->background(currentRenderer->getBackgroundColor());

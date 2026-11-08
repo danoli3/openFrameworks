@@ -4,6 +4,7 @@
 #if OF_USE_DAWN
 
 #include "ofGraphicsBaseTypes.h"
+#include "ofWindowSettings.h"
 #include "ofMatrixStack.h"
 #include "of3dGraphics.h"
 #include "ofPath.h"
@@ -35,6 +36,22 @@ public:
 	bool setup(void * metalLayer, int width, int height, float contentsScale);
 	void configureSurface(int width, int height);
 	void setPresentVSync(bool enabled);
+
+	/// Colour output. Takes effect on the next frame (the surface is reconfigured and the pipelines rebuilt).
+	/// If never called, uses the default colour mode (setDefaultColorMode(), SDR unless changed).
+	void setColorMode(ofDawnColorMode mode);
+	/// The mode that was asked for.
+	ofDawnColorMode getRequestedColorMode() const { return requestedColorMode_; }
+	/// The mode the surface actually runs in (HDR can fall back to WideGamut).
+	ofDawnColorMode getColorMode() const { return activeColorMode_; }
+	bool isHDR() const { return activeColorMode_ == ofDawnColorMode::HDR; }
+	wgpu::TextureFormat getSurfaceFormat() const { return surfaceFormat_; }
+	/// Largest colour component value the display can show, as a multiple of SDR white
+	/// (1.0 = no HDR headroom; ~2-16 on EDR displays). Updated by the window each frame.
+	float getHDRHeadroom() const { return hdrHeadroom_; }
+	void setHDRHeadroom(float headroom) { hdrHeadroom_ = headroom < 1.f ? 1.f : headroom; }
+	static void setDefaultColorMode(ofDawnColorMode mode);
+	static ofDawnColorMode getDefaultColorMode();
 	void shutdown();
 
 	bool isSetup() const { return device_ != nullptr && surface_ != nullptr; }
@@ -110,6 +127,7 @@ public:
 	void enablePointSprites() override;
 	void disablePointSprites() override;
 	void setDepthTest(bool depthTest) override;
+	void setDepthWrite(bool write) override;
 	void setBlendMode(ofBlendMode blendMode) override;
 	void setLineSmoothing(bool smooth) override;
 	void setCircleResolution(int res) override;
@@ -227,9 +245,13 @@ private:
 	std::deque<ofStyle> styleHistory;
 	bool bBackgroundAuto = true;
 	bool bDepthTest_ = false;
+	bool bDepthWrite_ = true;
 	bool pointSprites_ = false;
 	mutable bool loggedDraw_ = false;
 	bool vsync_ = true;
+	ofDawnColorMode requestedColorMode_ = ofDawnColorMode::SDR;
+	ofDawnColorMode activeColorMode_ = ofDawnColorMode::SDR;
+	float hdrHeadroom_ = 1.f;
 
 	mutable std::vector<GpuVertex> gpuVerts_;
 	mutable std::vector<DrawBatch> batches_;
@@ -237,7 +259,7 @@ private:
 	mutable std::vector<TexCache> texCache_;
 	mutable wgpu::TextureView activeView_;
 	wgpu::BindGroupLayout bindGroupLayout_;
-	wgpu::RenderPipeline pipelines_[12];
+	wgpu::RenderPipeline pipelines_[18];
 	wgpu::Texture whiteTex_;
 	wgpu::TextureView whiteView_;
 	wgpu::Sampler sampler_;

@@ -27,10 +27,33 @@
 
 const std::string ofWebGPURenderer::TYPE = "WebGPU";
 
+static ofDawnColorMode & defaultColorModeRef() {
+	static ofDawnColorMode mode = ofDawnColorMode::SDR;
+	return mode;
+}
+
+void ofWebGPURenderer::setDefaultColorMode(ofDawnColorMode mode) {
+	defaultColorModeRef() = mode;
+}
+
+ofDawnColorMode ofWebGPURenderer::getDefaultColorMode() {
+	return defaultColorModeRef();
+}
+
+void ofWebGPURenderer::setColorMode(ofDawnColorMode mode) {
+	if(requestedColorMode_ == mode) {
+		return;
+	}
+	requestedColorMode_ = mode;
+	// reconfigure at the next startRender() (never in the middle of a frame)
+	surfaceConfigured_ = false;
+}
+
 ofWebGPURenderer::ofWebGPURenderer(ofAppBaseWindow * window)
 	: window_(window)
 	, matrixStack(window)
 	, graphics3d(this) {
+	requestedColorMode_ = defaultColorModeRef();
 	currentStyle = ofStyle();
 }
 
@@ -178,13 +201,47 @@ void ofWebGPURenderer::configureSurface(int width, int height) {
 
 	wgpu::SurfaceCapabilities caps = {};
 	surface_.GetCapabilities(adapter_, &caps);
-	if(caps.formatCount > 0) {
-		surfaceFormat_ = caps.formats[0];
+	auto hasFormat = [&](wgpu::TextureFormat f) {
+		for(size_t i = 0; i < caps.formatCount; i++) {
+			if(caps.formats[i] == f) {
+				return true;
+			}
+		}
+		return false;
+	};
+	wgpu::TextureFormat format = caps.formatCount > 0 ? caps.formats[0] : surfaceFormat_;
+	ofDawnColorMode colorMode = requestedColorMode_;
+	if(colorMode == ofDawnColorMode::HDR) {
+		if(hasFormat(wgpu::TextureFormat::RGBA16Float)) {
+			format = wgpu::TextureFormat::RGBA16Float;
+		} else {
+			ofLogWarning("ofWebGPURenderer") << "HDR needs an RGBA16Float surface, which this device doesn't offer: using wide gamut";
+			colorMode = ofDawnColorMode::WideGamut;
+		}
 	}
+	if(colorMode == ofDawnColorMode::WideGamut && hasFormat(wgpu::TextureFormat::BGRA8Unorm)) {
+		format = wgpu::TextureFormat::BGRA8Unorm;
+	}
+	// the pipelines bake in the target format and whether the shader outputs linear light
+	if(format != surfaceFormat_ || (colorMode == ofDawnColorMode::HDR) != (activeColorMode_ == ofDawnColorMode::HDR)) {
+		pipelinesReady_ = false;
+	}
+	if(colorMode != activeColorMode_) {
+		ofLogNotice("ofWebGPURenderer") << "colour colorMode: " << (colorMode == ofDawnColorMode::HDR ? "HDR (float16 extended linear Display P3)" : colorMode == ofDawnColorMode::WideGamut ? "wide gamut (Display P3)" : "SDR (sRGB)");
+	}
+	surfaceFormat_ = format;
+	activeColorMode_ = colorMode;
+
+	wgpu::SurfaceColorManagement colorManagement;
+	colorManagement.colorSpace = colorMode == ofDawnColorMode::HDR ? wgpu::PredefinedColorSpace::DisplayP3Linear : wgpu::PredefinedColorSpace::DisplayP3;
+	colorManagement.toneMappingMode = colorMode == ofDawnColorMode::HDR ? wgpu::ToneMappingMode::Extended : wgpu::ToneMappingMode::Standard;
 
 	wgpu::SurfaceConfiguration config = {};
 	config.device = device_;
 	config.format = surfaceFormat_;
+	if(colorMode != ofDawnColorMode::SDR) {
+		config.nextInChain = &colorManagement;
+	}
 	config.usage = wgpu::TextureUsage::RenderAttachment;
 	config.alphaMode = wgpu::CompositeAlphaMode::Opaque;
 	config.width = static_cast<uint32_t>(width_);
@@ -512,6 +569,7 @@ ofFillFlag ofWebGPURenderer::getFillMode() { return currentStyle.bFill ? OF_FILL
 void ofWebGPURenderer::setLineWidth(float lineWidth) { currentStyle.lineWidth = lineWidth; }
 void ofWebGPURenderer::setPointSize(float pointSize) { currentStyle.pointSize = pointSize; }
 void ofWebGPURenderer::setDepthTest(bool depthTest) { bDepthTest_ = depthTest; }
+void ofWebGPURenderer::setDepthWrite(bool write) { bDepthWrite_ = write; }
 void ofWebGPURenderer::setBlendMode(ofBlendMode blendMode) { currentStyle.blendingMode = blendMode; }
 void ofWebGPURenderer::setLineSmoothing(bool smooth) { currentStyle.smoothing = smooth; }
 void ofWebGPURenderer::setCircleResolution(int res) {
@@ -1198,7 +1256,7 @@ void ofWebGPURenderer::beginBatch(int primBase) const {
 
 void ofWebGPURenderer::beginBatch(int primBase, const glm::mat4 & mvp) const {
 	const bool alpha = currentStyle.blendingMode != OF_BLENDMODE_DISABLED;
-	const int pipeline = primBase + (alpha ? 1 : 0) + (bDepthTest_ ? 6 : 0);
+	const int pipeline = primBase + (alpha ? 1 : 0) + (bDepthTest_ ? (bDepthWrite_ ? 6 : 12) : 0);
 	const WGPUTextureView view = activeView_ ? activeView_.Get() : nullptr;
 	if(!batches_.empty()) {
 		DrawBatch & last = batches_.back();
@@ -1380,7 +1438,16 @@ void ofWebGPURenderer::ensurePipelines() {
 	if(pipelinesReady_ || !device_) {
 		return;
 	}
-	static const char * kWGSL = R"(
+	// In HDR the surface is linear light: the oF colours (sRGB encoded, in 0..1 and beyond) are decoded in the
+	// fragment shader. sRGB decode is extended past 1.0 so values above SDR white stay bright and continuous.
+	const bool linearOut = activeColorMode_ == ofDawnColorMode::HDR;
+	static const char * kWGSLBody = R"(
+fn srgbToLinear(c: vec3f) -> vec3f {
+  let a = abs(c);
+  let lo = a / 12.92;
+  let hi = pow((a + vec3f(0.055)) / 1.055, vec3f(2.4));
+  return sign(c) * select(hi, lo, a <= vec3f(0.04045));
+}
 struct Uniforms { mvp: mat4x4f }
 @group(0) @binding(0) var<uniform> u: Uniforms;
 @group(0) @binding(1) var tex: texture_2d<f32>;
@@ -1403,11 +1470,16 @@ struct VSOut {
   return o;
 }
 @fragment fn fs(in: VSOut) -> @location(0) vec4f {
-  return in.color * textureSample(tex, samp, in.uv);
+  let c = in.color * textureSample(tex, samp, in.uv);
+  if (kLinearOut) {
+    return vec4f(srgbToLinear(c.rgb), c.a);
+  }
+  return c;
 }
 )";
+	const std::string wgslSource = std::string("const kLinearOut: bool = ") + (linearOut ? "true" : "false") + ";\n" + kWGSLBody;
 	wgpu::ShaderSourceWGSL wgsl;
-	wgsl.code = kWGSL;
+	wgsl.code = wgslSource.c_str();
 	wgpu::ShaderModuleDescriptor shaderDesc;
 	shaderDesc.nextInChain = &wgsl;
 	wgpu::ShaderModule module = device_.CreateShaderModule(&shaderDesc);
@@ -1489,9 +1561,11 @@ struct VSOut {
 	bufferLayout.attributeCount = 3;
 	bufferLayout.attributes = attributes;
 
-	for(int i = 0; i < 12; i++) {
+	// 0-5: no depth, 6-11: depth test + write, 12-17: depth test only (setDepthWrite(false))
+	for(int i = 0; i < 18; i++) {
 		const int prim = i % 6;
 		const bool depth = i >= 6;
+		const bool depthWrite = depth && i < 12;
 		const bool lines = prim >= 2 && prim < 4;
 		const bool points = prim >= 4;
 		const bool alpha = (prim % 2) == 1;
@@ -1523,7 +1597,7 @@ struct VSOut {
 
 		wgpu::DepthStencilState depthState = {};
 		depthState.format = wgpu::TextureFormat::Depth24Plus;
-		depthState.depthWriteEnabled = depth ? wgpu::OptionalBool::True : wgpu::OptionalBool::False;
+		depthState.depthWriteEnabled = depthWrite ? wgpu::OptionalBool::True : wgpu::OptionalBool::False;
 		depthState.depthCompare = depth ? wgpu::CompareFunction::Less : wgpu::CompareFunction::Always;
 
 		wgpu::PrimitiveTopology topology = wgpu::PrimitiveTopology::TriangleList;
@@ -1628,7 +1702,7 @@ void ofWebGPURenderer::flushBatches() {
 	pass_.SetVertexBuffer(0, slot.vertices, 0, vertexBytes);
 	for(size_t i = 0; i < batches_.size(); i++) {
 		const DrawBatch & batch = batches_[i];
-		if(batch.count == 0 || batch.pipeline < 0 || batch.pipeline >= 12 || !pipelines_[batch.pipeline]) {
+		if(batch.count == 0 || batch.pipeline < 0 || batch.pipeline >= 18 || !pipelines_[batch.pipeline]) {
 			continue;
 		}
 		uint32_t offset = static_cast<uint32_t>(i * uniformStride);

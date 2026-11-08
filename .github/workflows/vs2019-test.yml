@@ -36,8 +36,11 @@ jobs:
           Write-Host "installer exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { exit $p.ExitCode }
           Get-ChildItem "$vs\VC\Tools\MSVC" | ForEach-Object { Write-Host "MSVC toolset: $($_.Name)" }
-          $v142 = "$vs\MSBuild\Microsoft\VC\v170\Platforms\x64\PlatformToolsets\v142"
-          if (-not (Test-Path $v142)) { Write-Error "v142 platform toolset missing: $v142"; exit 1 }
+          # the v142 platform toolset definition lives under VCTargets, find it instead of assuming the path
+          $v142 = Get-ChildItem $vs -Recurse -Directory -Filter v142 -Depth 9 -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*PlatformToolsets*" }
+          $v142 | ForEach-Object { Write-Host "v142 platform toolset: $($_.FullName)" }
+          if (-not $v142) { Write-Error "v142 platform toolset not found under $vs"; exit 1 }
 
       - uses: msys2/setup-msys2@v2.33.0
         with:

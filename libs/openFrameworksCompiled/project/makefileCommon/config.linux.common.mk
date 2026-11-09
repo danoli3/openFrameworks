@@ -79,6 +79,22 @@ endif
 
 PLATFORM_DEFINES =
 
+# Which OpenGL API the core is built for:
+#   gl     desktop OpenGL through GLEW (default)
+#   gles2  OpenGL ES 2.0 through EGL (TARGET_OPENGLES, ES 3 headers not used)
+#   gles3  OpenGL ES 3.x through EGL (TARGET_OPENGLES, ES 3 enabled)
+# Select it per build, e.g. `make Debug OF_GL_API=gles3`. Raspberry Pi 4/5 can
+# use any of them; Pi 1-3 (vc4) only support gl 2.1 / gles2, so use gles2 there.
+OF_GL_API ?= gl
+ifeq ($(OF_GL_API),gl)
+else ifeq ($(OF_GL_API),gles2)
+	PLATFORM_DEFINES += TARGET_OPENGLES TARGET_FORCE_GLES_2
+else ifeq ($(OF_GL_API),gles3)
+	PLATFORM_DEFINES += TARGET_OPENGLES TARGET_OPENGLES_3
+else
+$(error OF_GL_API must be gl, gles2 or gles3 (got "$(OF_GL_API)"))
+endif
+
 # add OF_USING_GTK define IF we have it defined as a system library
 ifeq ($(HAS_SYSTEM_GTK2),0)
 	PLATFORM_DEFINES += OF_USING_GTK
@@ -260,6 +276,10 @@ ifeq ($(LINUX_ARM),1)
 else
 	PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/openFrameworks/app/ofAppEGLWindow.cpp
 endif
+# GLUT needs desktop GL
+ifneq ($(OF_GL_API),gl)
+	PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/openFrameworks/app/ofAppGlutWindow.cpp
+endif
 
 # third party
 # PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/glew/%
@@ -403,9 +423,19 @@ endif
 ifneq ($(LINUX_ARM),1)
 	PLATFORM_PKG_CONFIG_LIBRARIES += libpulse-simple
 	PLATFORM_PKG_CONFIG_LIBRARIES += alsa
-	PLATFORM_PKG_CONFIG_LIBRARIES += gl
-	PLATFORM_PKG_CONFIG_LIBRARIES += glu
-	PLATFORM_PKG_CONFIG_LIBRARIES += glew
+endif
+
+# Desktop GL (GLEW) on everything but armv6l, whose cross sysroot has no gl.pc;
+# armv7l builds core code that needs GLEW's GLX symbols, so it links them too.
+ifeq ($(OF_GL_API),gl)
+	ifneq ($(PLATFORM_ARCH),armv6l)
+		PLATFORM_PKG_CONFIG_LIBRARIES += gl
+		PLATFORM_PKG_CONFIG_LIBRARIES += glu
+		PLATFORM_PKG_CONFIG_LIBRARIES += glew
+	endif
+else
+	PLATFORM_PKG_CONFIG_LIBRARIES += glesv2
+	PLATFORM_PKG_CONFIG_LIBRARIES += egl
 endif
 
 

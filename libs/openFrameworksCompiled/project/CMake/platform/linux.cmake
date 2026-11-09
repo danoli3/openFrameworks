@@ -112,6 +112,9 @@ endif()
 # plain system libraries
 if(NOT _of_linux_arm)
 	list(APPEND OF_PLATFORM_LINK_LIBRARIES glut)
+else()
+	# 32-bit ARM: std::atomic of 64-bit types needs libatomic
+	list(APPEND OF_PLATFORM_LINK_LIBRARIES atomic)
 endif()
 if(NOT OF_PLATFORM STREQUAL "linux/armv6l")
 	list(APPEND OF_PLATFORM_LINK_LIBRARIES X11 Xrandr Xxf86vm Xi Xcursor dl pthread)

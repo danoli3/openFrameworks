@@ -51,6 +51,12 @@ static ofxiOSDawnView * _instanceRef = nil;
 	layer.contentsScale = self.contentScaleFactor;
 	layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 	layer.framebufferOnly = YES;
+	if(ofWebGPURenderer::getDefaultColorMode() == ofDawnColorMode::HDR) {
+		// opt the layer in to extended dynamic range (EDR) content
+		if(@available(iOS 16.0, *)) {
+			layer.wantsExtendedDynamicRangeContent = YES;
+		}
+	}
 
 	CGFloat scale = self.contentScaleFactor;
 	screenSize = { (float)([UIScreen mainScreen].bounds.size.width * scale), (float)([UIScreen mainScreen].bounds.size.height * scale) };
@@ -122,6 +128,13 @@ static ofxiOSDawnView * _instanceRef = nil;
 
 - (void)startRender {
 	if(window && window->renderer()) {
+		if(auto dawnRenderer = std::dynamic_pointer_cast<ofWebGPURenderer>(window->renderer())) {
+			if(dawnRenderer->isHDR()) {
+				if(@available(iOS 16.0, *)) {
+					dawnRenderer->setHDRHeadroom((float)self.window.screen.currentEDRHeadroom);
+				}
+			}
+		}
 		window->renderer()->startRender();
 	}
 }

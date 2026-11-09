@@ -334,6 +334,12 @@ PLATFORM_HEADER_SEARCH_PATHS =
 
 PLATFORM_LIBRARIES =
 
+# 32-bit ARM has no native 64-bit atomics; std::atomic<64-bit> (e.g. in the
+# event/network code) calls __atomic_*_8 from libatomic.
+ifeq ($(LINUX_ARM),1)
+	PLATFORM_LIBRARIES += atomic
+endif
+
 ifneq ($(LINUX_ARM),1)
 	PLATFORM_LIBRARIES += glut
 

@@ -226,7 +226,16 @@ enum ofTargetPlatform{
 #ifdef TARGET_LINUX
     #define OF_CAIRO
 
-	#ifdef TARGET_LINUX_ARM
+	// GLES is selected by TARGET_OPENGLES (make OF_GL_API=gles2|gles3) or by the
+	// legacy TARGET_LINUX_ARM, which only the old Raspberry Pi builds define.
+	#if defined(TARGET_LINUX_ARM) || defined(TARGET_OPENGLES)
+		#ifndef TARGET_OPENGLES
+			#define TARGET_OPENGLES
+		#endif
+		// ES 2 and ES 3 have no fixed-function pipeline (glVertexPointer, glColorPointer, ...)
+		#if !defined(TARGET_PROGRAMMABLE_GL) && !defined(TARGET_FORCE_GLES_1)
+			#define TARGET_PROGRAMMABLE_GL
+		#endif
 		#ifdef TARGET_RASPBERRY_PI
 			#include <bcm_host.h>
 			// rpi firmware headers define countof
@@ -243,6 +252,19 @@ enum ofTargetPlatform{
 		#define EGL_EGLEXT_PROTOTYPES
 		#include <EGL/egl.h>
 		#include <EGL/eglext.h>
+
+		#ifndef TARGET_RASPBERRY_PI
+			// GLES through GLFW on a regular Linux userland (Mesa, Pi 4/5)
+			#define TARGET_GLFW_WINDOW
+			#define OF_RTAUDIO
+			#ifndef __LINUX_PULSE__
+				#define __LINUX_PULSE__
+			#endif
+			#ifndef __LINUX_ALSA__
+				#define __LINUX_ALSA__
+			#endif
+			#define __LINUX_OSS__
+		#endif
 	#else // desktop linux
         #define TARGET_GLFW_WINDOW
         #define OF_RTAUDIO

@@ -232,6 +232,10 @@ enum ofTargetPlatform{
 		#ifndef TARGET_OPENGLES
 			#define TARGET_OPENGLES
 		#endif
+		// ES 2 and ES 3 have no fixed-function pipeline (glVertexPointer, glColorPointer, ...)
+		#if !defined(TARGET_PROGRAMMABLE_GL) && !defined(TARGET_FORCE_GLES_1)
+			#define TARGET_PROGRAMMABLE_GL
+		#endif
 		#ifdef TARGET_RASPBERRY_PI
 			#include <bcm_host.h>
 			// rpi firmware headers define countof

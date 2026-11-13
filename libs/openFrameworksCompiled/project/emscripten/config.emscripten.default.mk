@@ -151,7 +151,8 @@ endif
 PLATFORM_LDFLAGS += --use-port=emdawnwebgpu
 # PROJECT_DEFINES += OF_WEBGL_VERSION=1 in config.make for a WebGL 1 only build (default WebGL 2)
 ifneq ($(filter OF_WEBGL_VERSION=1,$(PROJECT_DEFINES)),)
-PLATFORM_LDFLAGS += -s MAX_WEBGL_VERSION=1 -s FULL_ES2
+# the core still references GLES3 entry points, so keep them linkable; OF_WEBGL_VERSION=1 requests a WebGL 1 context
+PLATFORM_LDFLAGS += -s MIN_WEBGL_VERSION=1 -s MAX_WEBGL_VERSION=2 -s FULL_ES2
 else
 PLATFORM_LDFLAGS += -s MAX_WEBGL_VERSION=2 -s WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1 -s FULL_ES3
 endif
